@@ -5,6 +5,7 @@ var cors = require('cors');
 const bodyParser = require('body-parser');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
+const { ObjectId } = require('mongoose').Types;
 
 const uploadRoutes = require('./routes/uploadRoutes');
 const Data = require('./models/dataModel');
@@ -17,6 +18,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'http://localhost:80',
     'https://localhost:443',
+
 ];
 app.use(bodyParser.json());
 app.use(cookieParser());
@@ -35,7 +37,7 @@ app.use(session({
 app.use(cors({
     origin: allowedOrigins,
     credentials: true,
-    methods: ['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS']
+    methods: ['GET', 'PUT', 'POST', 'DELETE']
 }));
 
 mongoose.connect(process.env.MONGO_URI, {
@@ -92,8 +94,6 @@ app.get('/studentData', async (req, res) => {
         if (req.session.user.userType === 'student') {
             return res.status(401).json({ message: 'Not allowed to access' });
         }
-
-
         const data = await Data.find();
         res.json(data);
     } catch (error) {
@@ -101,6 +101,32 @@ app.get('/studentData', async (req, res) => {
         res.status(500).send('An error occurred while fetching data.');
     }
 });
+
+
+app.get('/performance/:id', async (req, res) => {
+    const student_id = req.params.id;
+    try {
+        if (!req.session.loggedIn) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        if (!ObjectId.isValid(student_id)) {
+            return res.status(400).json({ message: 'Invalid student ID' });
+        }
+
+        const performanceData = await Data.findOne({ _id: student_id });
+        if (!performanceData) {
+            return res.status(404).json({ message: 'Performance data not found' });
+        }
+
+        res.json(performanceData);
+    } catch (error) {
+        console.log(error);
+        res.status(500).send('An error occurred while fetching performance data.');
+    }
+});
+
+
 
 app.post('/login', async (req, res) => {
     try {

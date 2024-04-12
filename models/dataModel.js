@@ -5,10 +5,9 @@ const dataSchema = new mongoose.Schema({
     registerNumber: String,
     studentname: String,
     batch: String,
-    gender: String,
     department: String,
+    contact: String,
     studentEmail: String,
-    hostellerOrDayscholar: String,
     undertaking: String
 });
 
