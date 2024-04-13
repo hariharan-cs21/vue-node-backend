@@ -10,6 +10,8 @@ const { ObjectId } = require('mongoose').Types;
 const uploadRoutes = require('./routes/uploadRoutes');
 const Data = require('./models/dataModel');
 const User = require('./models/users');
+const Performance = require('./models/Performance');
+const performanceRoutes = require('./routes/performanceRoutes');
 var cookieParser = require('cookie-parser');
 
 const app = express();
@@ -104,55 +106,113 @@ app.get('/studentData', async (req, res) => {
 
 
 app.get('/performance/:id', async (req, res) => {
-    const student_id = req.params.id;
+    const studentId = req.params.id;
     try {
         if (!req.session.loggedIn) {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
-        if (!ObjectId.isValid(student_id)) {
+        if (!ObjectId.isValid(studentId)) {
             return res.status(400).json({ message: 'Invalid student ID' });
         }
 
-        const performanceData = await Data.findOne({ _id: student_id });
+        const userData = await Data.findOne({ _id: studentId });
+        if (!userData) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        const performanceData = await Performance.findOne({ studentId });
         if (!performanceData) {
             return res.status(404).json({ message: 'Performance data not found' });
         }
 
-        res.json(performanceData);
+        const combinedData = {
+            ...userData.toObject(),
+            assessmentsCompleted: performanceData.assessmentsCompleted
+        };
+
+        res.json(combinedData);
+
     } catch (error) {
         console.log(error);
-        res.status(500).send('An error occurred while fetching performance data.');
+        res.status(500).send('An error occurred while fetching data.');
     }
 });
+app.post('/performance', async (req, res) => {
+    const { studentId } = req.body;
+    try {
+        if (!req.session.loggedIn) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
 
+        if (!ObjectId.isValid(studentId)) {
+            return res.status(400).json({ message: 'Invalid student ID' });
+        }
+
+        const userData = await Data.findOne({ _id: studentId });
+        if (!userData) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        const performanceData = await Performance.findOne({ studentId });
+        if (!performanceData) {
+            return res.status(404).json({ message: 'Performance data not found' });
+        }
+
+        const combinedData = {
+            ...userData.toObject(),
+            assessmentsCompleted: performanceData.assessmentsCompleted
+        };
+
+        res.json(combinedData);
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).send('An error occurred while fetching data.');
+    }
+});
 
 
 app.post('/login', async (req, res) => {
     try {
         const { user_email, password } = req.body;
-        const user = await User.findOne({ user_email });
-        console.log(user);
-        if (!user) {
+
+        const existingUser = await User.findOne({ user_email }).populate('studentId');
+
+        if (!existingUser) {
             return res.status(401).json({ message: 'Authentication failed', status: 0 });
         }
 
-        const passwordMatch = await bcrypt.compare(password, user.password);
+        if (existingUser.userType === 'student') {
+            const userData = await Data.findOne({ studentEmail: user_email });
 
-        if (!passwordMatch) {
-            return res.status(401).json({ message: 'Authentication failed', status: 0 });
+            if (userData && userData.contact === password) {
+                req.session.user = existingUser;
+                req.session.loggedIn = true;
+                res.status(200).json({ user: existingUser });
+                req.session.save();
+                return;
+            }
+        } else {
+            const passwordMatch = await bcrypt.compare(password, existingUser.password);
+
+            if (passwordMatch) {
+                req.session.user = existingUser;
+                req.session.loggedIn = true;
+                res.status(200).json({ user: existingUser });
+                req.session.save();
+                return;
+            }
         }
 
-        req.session.user = user
-        req.session.loggedIn = true;
-        res.status(200).json({ user });
-        req.session.save()
+        return res.status(401).json({ message: 'Authentication failed', status: 0 });
 
     } catch (error) {
         console.error("Error in user login: ", error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
+
 
 app.post('/logout', function (req, res) {
     try {
@@ -168,7 +228,10 @@ app.post('/logout', function (req, res) {
 );
 
 app.use('/upload', uploadRoutes)
+app.use('/addPerformance', performanceRoutes)
+
 const PORT = process.env.PORT
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
