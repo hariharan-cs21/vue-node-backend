@@ -177,35 +177,40 @@ app.post('/login', async (req, res) => {
     try {
         const { user_email, password } = req.body;
 
-        const existingUser = await User.findOne({ user_email }).populate('studentId');
+        let existingUser = await User.findOne({ user_email }).populate('studentId');
 
         if (!existingUser) {
-            return res.status(401).json({ message: 'Authentication failed', status: 0 });
-        }
-
-        if (existingUser.userType === 'student') {
             const userData = await Data.findOne({ studentEmail: user_email });
 
             if (userData && userData.contact === password) {
-                req.session.user = existingUser;
-                req.session.loggedIn = true;
-                res.status(200).json({ user: existingUser });
-                req.session.save();
-                return;
+                const newStudent = new Data(userData);
+                const savedStudent = await newStudent.save();
+
+                const hashedPassword = await bcrypt.hash(password, 10);
+                const newUser = new User({
+                    user_email,
+                    password: hashedPassword,
+                    userType: 'student',
+                    studentId: savedStudent._id,
+                });
+                existingUser = await newUser.save();
+
+                existingUser = await User.findById(existingUser._id).populate('studentId');
+            } else {
+                return res.status(401).json({ message: 'Authentication failed', status: 0 });
             }
         } else {
             const passwordMatch = await bcrypt.compare(password, existingUser.password);
 
-            if (passwordMatch) {
-                req.session.user = existingUser;
-                req.session.loggedIn = true;
-                res.status(200).json({ user: existingUser });
-                req.session.save();
-                return;
+            if (!passwordMatch) {
+                return res.status(401).json({ message: 'Authentication failed', status: 0 });
             }
         }
 
-        return res.status(401).json({ message: 'Authentication failed', status: 0 });
+        req.session.user = existingUser;
+        req.session.loggedIn = true;
+        res.status(200).json({ user: existingUser });
+        req.session.save();
 
     } catch (error) {
         console.error("Error in user login: ", error);
