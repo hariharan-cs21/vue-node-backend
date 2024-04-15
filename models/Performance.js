@@ -18,6 +18,21 @@ const performanceSchema = new mongoose.Schema({
         marks: {
             type: Number,
             required: true
+        },
+        totalMarks: {
+            type: Number,
+            required: true
+        },
+        averageMarks: {
+            type: Number,
+            required: true
+        },
+        attendancePercentage: {
+            type: Number,
+            required: true
+        },
+        comments: {
+            type: String
         }
     }]
 });

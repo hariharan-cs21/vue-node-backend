@@ -6,13 +6,11 @@ const Data = require('../models/dataModel');
 
 router.post('/', async (req, res) => {
     try {
-
         if (!req.session.loggedIn || req.session.user.userType !== 'admin') {
             return res.status(401).json({ message: 'Authentication required' });
         }
 
         const { studentId, assessmentsCompleted } = req.body;
-
 
         if (!ObjectId.isValid(studentId)) {
             return res.status(400).json({ message: 'Invalid student ID' });
@@ -48,8 +46,5 @@ router.post('/', async (req, res) => {
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
-
-
-
 
 module.exports = router;
