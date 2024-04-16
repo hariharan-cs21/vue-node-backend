@@ -47,6 +47,7 @@ mongoose.connect(process.env.MONGO_URI, {
     useUnifiedTopology: true
 }).then(() => {
     console.log('Connected to MongoDB');
+
 }).catch((err) => {
     console.error('Error connecting to MongoDB:', err)
 });
@@ -111,7 +112,6 @@ app.get('/performance/:id', async (req, res) => {
         if (!req.session.loggedIn) {
             return res.status(401).json({ message: 'Authentication required' });
         }
-
         if (!ObjectId.isValid(studentId)) {
             return res.status(400).json({ message: 'Invalid student ID' });
         }
@@ -125,10 +125,12 @@ app.get('/performance/:id', async (req, res) => {
         if (!performanceData) {
             return res.status(404).json({ message: 'Performance data not found' });
         }
+        const problemSolvingData = performanceData.problemSolving;
 
         const combinedData = {
             ...userData.toObject(),
-            assessmentsCompleted: performanceData.assessmentsCompleted
+            assessmentsCompleted: performanceData.assessmentsCompleted,
+            problemSolving: problemSolvingData
         };
 
         res.json(combinedData);
@@ -138,6 +140,37 @@ app.get('/performance/:id', async (req, res) => {
         res.status(500).send('An error occurred while fetching data.');
     }
 });
+app.delete('/performance/:studentId/:assessmentId', async (req, res) => {
+    const { studentId, assessmentId } = req.params;
+
+    try {
+        if (!req.session.loggedIn) {
+            return res.status(401).json({ message: 'Authentication required' });
+        }
+
+        if (!ObjectId.isValid(studentId) || !ObjectId.isValid(assessmentId)) {
+            return res.status(400).json({ message: 'Invalid IDs' });
+        }
+
+        const performanceData = await Performance.findOneAndUpdate(
+            { studentId },
+            { $pull: { assessmentsCompleted: { _id: assessmentId } } },
+            { new: true }
+        );
+
+        if (!performanceData) {
+            return res.status(404).json({ message: 'Performance data not found' });
+        }
+
+        res.json(performanceData);
+
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
 app.post('/performance', async (req, res) => {
     const { studentId } = req.body;
     try {
@@ -158,10 +191,13 @@ app.post('/performance', async (req, res) => {
         if (!performanceData) {
             return res.status(404).json({ message: 'Performance data not found' });
         }
+        const problemSolvingData = performanceData.problemSolving;
 
         const combinedData = {
             ...userData.toObject(),
-            assessmentsCompleted: performanceData.assessmentsCompleted
+            assessmentsCompleted: performanceData.assessmentsCompleted,
+            problemSolving: problemSolvingData
+
         };
 
         res.json(combinedData);

@@ -9,30 +9,41 @@ const performanceSchema = new mongoose.Schema({
     assessmentsCompleted: [{
         assessmentName: {
             type: String,
-            required: true
         },
         dateCompleted: {
             type: Date,
-            required: true
         },
         marks: {
             type: Number,
-            required: true
         },
         totalMarks: {
             type: Number,
-            required: true
         },
         averageMarks: {
             type: Number,
-            required: true
         },
         attendancePercentage: {
             type: Number,
-            required: true
         },
         comments: {
             type: String
+        }
+    }],
+    fullStackProjectLevel: {
+        type: Number
+    },
+    coreProjectLevel: {
+        type: Number
+    },
+    problemSolving: [{
+        levelName: {
+            type: String,
+        },
+        attempts: {
+            type: Number,
+        },
+        date: {
+            type: Date,
         }
     }]
 });
